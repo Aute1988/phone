@@ -189,7 +189,7 @@ a = Analysis(
 # --------------------------------------------------------------------------
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-EXE(
+exe = EXE(
     pyz,
     a.scripts,
     [],
