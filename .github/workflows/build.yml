@@ -1,0 +1,89 @@
+# ============================================================================
+# GitHub Actions: 自动打包 Windows EXE（PyInstaller）
+#
+# 触发方式：
+#   1. push 到 main / master 分支 → 自动打包
+#   2. 手动触发（Actions 页面 → Run workflow）
+#   3. 创建 v* 标签（如 v1.0.0）→ 自动打包 + 发布 Release
+#
+# 产物：
+#   - 每次构建：Artifacts → phone-dedup-tool-windows.zip
+#   - 打 tag 时：自动创建 Release，附 zip 包
+# ============================================================================
+
+name: 📦 打包 Windows EXE
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: write  # 打 tag 时需要写权限创建 Release
+
+jobs:
+  build-windows:
+    name: 🔨 构建 Windows 单文件夹绿色版
+    runs-on: windows-latest  # GitHub 提供的 Windows 虚拟机
+
+    steps:
+      # ─── 1. 拉取代码 ───
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      # ─── 2. 配置 Python ───
+      - name: 🐍 设置 Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'  # 缓存 pip 依赖，加速后续构建
+
+      # ─── 3. 安装依赖 ───
+      - name: 📦 安装 Python 依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      # ─── 4. 执行打包 ───
+      - name: 🔨 PyInstaller 打包
+        run: |
+          python -m PyInstaller phone_dedup.spec --noconfirm --clean
+
+      # ─── 5. 复制辅助文件到产物目录 ───
+      - name: 📋 复制 start.bat 和使用说明到 dist
+        run: |
+          Copy-Item -Path "start.bat" -Destination "dist\phone_dedup_tool\"
+          Copy-Item -Path "使用说明.txt" -Destination "dist\phone_dedup_tool\"
+          Write-Host "✓ 辅助文件已复制"
+
+      # ─── 6. 计算产物大小 ───
+      - name: 📊 显示产物大小
+        run: |
+          $size = (Get-ChildItem "dist\phone_dedup_tool" -Recurse | Measure-Object Length -Sum).Sum / 1MB
+          Write-Host "📦 产物大小: $([math]::Round($size, 2)) MB"
+
+      # ─── 7. 打包成 zip（客户好下载） ───
+      - name: 🗜️ 压缩成 zip
+        run: |
+          Compress-Archive -Path "dist\phone_dedup_tool" -DestinationPath "phone-dedup-tool-windows.zip"
+          Write-Host "✓ 已压缩为 phone-dedup-tool-windows.zip"
+
+      # ─── 8. 上传为 Artifact（每次构建都能下载） ───
+      - name: 📤 上传 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phone-dedup-tool-windows
+          path: phone-dedup-tool-windows.zip
+          retention-days: 30  # 30 天后自动清理
+
+      # ─── 9. 如果是 git tag，自动创建 Release ───
+      - name: 🎉 创建 Release（仅 tag 触发时）
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: phone-dedup-tool-windows.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false

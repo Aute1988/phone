@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>📱 手机号去重管理工具</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-2: #1e293b;
+    --card: #ffffff;
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --text: #0f172a;
+    --text-2: #64748b;
+    --border: #e2e8f0;
+    --shadow: 0 10px 30px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: var(--text);
+    padding: 24px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* ===== Header ===== */
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    color: #fff; margin-bottom: 24px;
+  }
+  .header h1 { margin: 0; font-size: 26px; font-weight: 600; }
+  .header .stats { display: flex; gap: 16px; }
+  .stat-pill {
+    background: rgba(255,255,255,.15); backdrop-filter: blur(10px);
+    padding: 8px 16px; border-radius: 999px; font-size: 13px;
+  }
+  .stat-pill strong { color: #fff; font-size: 16px; margin-left: 4px; }
+
+  /* ===== 最近一次下载横幅 ===== */
+  .last-download-card {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #6ee7b7;
+  }
+  .last-download-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .last-download-info {
+    display: flex; align-items: center; gap: 12px; flex: 1; min-width: 240px;
+  }
+  .last-download-icon { font-size: 36px; }
+  .last-download-title {
+    font-size: 16px; font-weight: 600; color: #065f46;
+  }
+  .last-download-detail {
+    font-size: 13px; color: #047857; margin-top: 2px;
+  }
+  .last-download-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+
+  /* ===== Card ===== */
+  .card {
+    background: var(--card); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 24px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 16px; font-weight: 600; margin: 0 0 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .badge {
+    background: #f1f5f9; color: var(--text-2);
+    padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
+  }
+
+  /* ===== Upload Area ===== */
+  .upload-area {
+    display: block;
+    border: 2px dashed #cbd5e1; border-radius: 12px;
+    padding: 40px 20px; text-align: center; cursor: pointer;
+    transition: all .2s; background: #f8fafc;
+    user-select: none;
+  }
+  .upload-area:hover, .upload-area.dragover {
+    border-color: var(--primary); background: #eef2ff;
+  }
+  .upload-area .icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-area .hint { color: var(--text-2); font-size: 14px; margin-top: 8px; }
+  .upload-area .main { font-size: 16px; font-weight: 500; }
+  .upload-area input[type=file] { display: none; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--primary); color: #fff; border: none;
+    padding: 10px 20px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 500; transition: all .2s;
+  }
+  .btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: #f1f5f9; color: var(--text); }
+  .btn-secondary:hover { background: #e2e8f0; }
+
+  /* 小按钮（表格里用） */
+  .btn-tiny {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 12px; font-size: 12px; font-weight: 500;
+    border-radius: 6px; text-decoration: none;
+    background: var(--primary); color: #fff;
+    transition: all .15s;
+  }
+  .btn-tiny:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .row-actions { display: inline-flex; gap: 6px; }
+
+  /* ===== Progress ===== */
+  .progress {
+    display: none; margin-top: 16px;
+    padding: 16px; background: #f8fafc; border-radius: 8px;
+  }
+  .progress.active { display: block; }
+  .progress-bar {
+    height: 6px; background: #e2e8f0; border-radius: 3px;
+    overflow: hidden; margin-top: 8px;
+  }
+  .progress-bar-inner {
+    height: 100%; background: var(--primary); width: 0%;
+    transition: width .3s;
+  }
+
+  /* ===== Result Toast ===== */
+  .result {
+    display: none; margin-top: 16px;
+    padding: 20px; border-radius: 12px;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #6ee7b7;
+  }
+  .result.active { display: block; }
+  .result.error {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-color: #fca5a5;
+  }
+  .result h3 { margin: 0 0 12px; font-size: 18px; }
+  .result-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 16px;
+  }
+  .result-item { background: #fff; padding: 12px; border-radius: 8px; text-align: center; }
+  .result-item .num { font-size: 24px; font-weight: 700; color: var(--text); }
+  .result-item .label { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+  .result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ===== History Table ===== */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th {
+    background: #f8fafc; font-weight: 600; color: var(--text-2);
+    font-size: 13px; text-transform: uppercase; letter-spacing: .5px;
+  }
+  tr:hover td { background: #f8fafc; }
+  td.num { font-weight: 600; }
+  td.num.dup { color: var(--warning); }
+  td.num.new { color: var(--success); }
+  .filename { font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Dropdown */
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-menu {
+    display: none; position: absolute; right: 0; top: 100%;
+    background: #fff; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    border-radius: 8px; overflow: hidden; z-index: 10; margin-top: 4px;
+  }
+  .dropdown-menu.show { display: block; }
+  .dropdown-item {
+    display: block; padding: 10px 16px; color: var(--text);
+    text-decoration: none; cursor: pointer; font-size: 14px;
+  }
+  .dropdown-item:hover { background: #f1f5f9; }
+
+  /* Search */
+  .search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .search-row input {
+    flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; outline: none;
+  }
+  .search-row input:focus { border-color: var(--primary); }
+  .search-meta {
+    font-size: 13px; color: var(--text-2); margin-bottom: 8px;
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  }
+  .search-meta .badge-ok {
+    background: #d1fae5; color: #065f46; padding: 2px 8px;
+    border-radius: 6px; font-weight: 500;
+  }
+  .search-meta .badge-no {
+    background: #fee2e2; color: #991b1b; padding: 2px 8px;
+    border-radius: 6px; font-weight: 500;
+  }
+  .search-results {
+    max-height: 360px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .search-results .result-row {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 14px; display: flex; justify-content: space-between;
+  }
+  .search-results .result-row:last-child { border-bottom: none; }
+  .search-results .result-row:hover { background: #f8fafc; }
+  .search-results .copy-btn {
+    background: none; border: none; color: var(--primary);
+    cursor: pointer; font-size: 12px;
+  }
+
+  /* Export All */
+  .export-all-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .export-all-row .info {
+    flex: 1; color: var(--text-2); font-size: 14px;
+  }
+  .export-all-row select {
+    padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; background: #fff;
+  }
+
+  /* Empty state */
+  .empty {
+    text-align: center; padding: 40px 20px; color: var(--text-2);
+  }
+  .empty .icon { font-size: 48px; margin-bottom: 8px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 24px; right: 24px;
+    background: var(--text); color: #fff; padding: 12px 20px;
+    border-radius: 8px; box-shadow: var(--shadow);
+    transform: translateX(120%); transition: transform .3s; z-index: 1000;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.error { background: var(--danger); }
+  .toast.success { background: var(--success); }
+
+  /* ===== 响应式布局 ===== */
+  /* 1024px 以下：header 紧凑，统计变两行 */
+  @media (max-width: 1024px) {
+    .header { flex-wrap: wrap; gap: 12px; }
+    .header h1 { font-size: 20px; }
+    .stats { gap: 8px; }
+    .stat-pill { padding: 6px 12px; font-size: 12px; }
+    .stat-pill strong { font-size: 14px; }
+  }
+
+  /* 900px 以下：上传区紧凑，padding 减小 */
+  @media (max-width: 900px) {
+    .upload-area { padding: 28px 16px; }
+    .upload-area .icon { font-size: 40px; margin-bottom: 8px; }
+    .upload-area .main { font-size: 15px; }
+    .upload-area .hint { font-size: 13px; }
+    .card { padding: 18px; }
+    .card-title { font-size: 15px; }
+    .card-title .badge { font-size: 11px; padding: 2px 8px; }
+  }
+
+  /* 720px 以下：2 列网格，header 竖排 */
+  @media (max-width: 720px) {
+    .container { padding: 12px; }
+    .result-grid { grid-template-columns: repeat(2, 1fr); }
+    .header { flex-direction: column; gap: 12px; align-items: flex-start; }
+    .result-actions { flex-direction: column; align-items: stretch; }
+    .result-actions .btn { width: 100%; justify-content: center; }
+    .last-download-row { flex-direction: column; align-items: flex-start; }
+    .last-download-actions { width: 100%; }
+    .last-download-actions .btn { flex: 1; justify-content: center; }
+  }
+
+  /* 480px 以下：移动端，文字更紧凑 */
+  @media (max-width: 480px) {
+    .upload-area { padding: 20px 12px; }
+    .upload-area .icon { font-size: 32px; }
+    .upload-area .main { font-size: 14px; }
+    .upload-area .hint { font-size: 12px; }
+    .table-wrap { font-size: 13px; }
+    th, td { padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>📱 手机号去重管理工具</h1>
+    <div class="stats">
+      <div class="stat-pill">手机号总数 <strong id="stat-phones">0</strong></div>
+      <div class="stat-pill">上传次数 <strong id="stat-uploads">0</strong></div>
+    </div>
+  </div>
+
+  <!-- 最近一次下载（仅在刚上传完时显示） -->
+  <div class="card last-download-card" id="last-download-card" style="display:none">
+    <div class="last-download-row">
+      <div class="last-download-info">
+        <div class="last-download-icon">✅</div>
+        <div class="last-download-text">
+          <div class="last-download-title">本次上传完成</div>
+          <div class="last-download-detail" id="last-download-detail">—</div>
+        </div>
+      </div>
+      <div class="last-download-actions">
+        <a class="btn" id="last-download-txt" href="#" download>⬇️ 下载本次不重复 (TXT)</a>
+        <a class="btn btn-secondary" id="last-download-xlsx" href="#" download>📊 Excel</a>
+        <button class="btn btn-secondary" id="btn-collapse-last">收起</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="card">
+    <h2 class="card-title">📤 上传文件 <span class="badge">支持 .txt / .xlsx / .xls / .csv</span></h2>
+    <label class="upload-area" id="upload-area">
+      <div class="icon">📁</div>
+      <div class="main">点击或拖拽文件到这里上传</div>
+      <div class="hint">每批约 1 万条 11 位手机号 · 自动与历史库对比去重</div>
+      <input type="file" id="file-input" accept=".txt,.xlsx,.xls,.csv" />
+    </label>
+
+    <div class="progress" id="progress">
+      <div>正在处理文件...</div>
+      <div class="progress-bar"><div class="progress-bar-inner" id="progress-bar-inner"></div></div>
+    </div>
+
+    <div class="result" id="result">
+      <h3 id="result-title">✅ 上传成功</h3>
+      <div class="result-grid">
+        <div class="result-item"><div class="num" id="r-total">0</div><div class="label">有效手机号</div></div>
+        <div class="result-item"><div class="num" id="r-dup">0</div><div class="label">重复（已存在）</div></div>
+        <div class="result-item"><div class="num" id="r-new">0</div><div class="label">新增（不重复）</div></div>
+        <div class="result-item"><div class="num" id="r-skip">0</div><div class="label">跳过（不合法）</div></div>
+      </div>
+      <div class="result-actions">
+        <a class="btn" id="btn-download-txt" download>⬇️ 下载无重复版 txt</a>
+        <button class="btn btn-secondary" id="btn-upload-again">📤 再上传一个</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Card -->
+  <div class="card">
+    <h2 class="card-title">🔍 搜索手机号 <span class="badge">在历史库里查</span></h2>
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="输入完整或部分手机号（11 位数字）" maxlength="20" />
+      <button class="btn" id="btn-search">搜索</button>
+    </div>
+    <div class="search-meta" id="search-meta" style="display:none">
+      <span id="search-summary"></span>
+      <button class="btn btn-secondary" id="btn-load-more" style="display:none">加载更多</button>
+    </div>
+    <div class="search-results" id="search-results" style="display:none"></div>
+  </div>
+
+  <!-- Export All Card -->
+  <div class="card">
+    <h2 class="card-title">📦 导出整个数据库</h2>
+    <div class="export-all-row">
+      <div class="info">导出当前库内<strong style="color:var(--text)" id="export-all-count">0</strong> 条不重复手机号</div>
+      <select id="export-all-format">
+        <option value="txt">📄 TXT 格式</option>
+        <option value="xlsx">📊 Excel 格式</option>
+      </select>
+      <button class="btn" id="btn-export-all">⬇️ 导出全部</button>
+    </div>
+  </div>
+
+  <!-- History Card -->
+  <div class="card">
+    <h2 class="card-title">📚 历史记录 <span class="badge" id="records-badge">0 条</span></h2>
+    <div id="history-area">
+      <div class="empty" id="empty">
+        <div class="icon">📭</div>
+        <div>还没有上传记录</div>
+      </div>
+      <div class="table-wrap" id="table-wrap" style="display:none">
+        <table>
+          <thead>
+            <tr>
+              <th>文件名</th>
+              <th>上传时间</th>
+              <th>总条数</th>
+              <th>重复数</th>
+              <th>新增数</th>
+              <th style="text-align:right">下载</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 工具函数 =====
+const $ = (id) => document.getElementById(id);
+
+const toast = (msg, type = "") => {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show " + type;
+  setTimeout(() => t.className = "toast " + type, 2500);
+};
+
+// 【安全】HTML 转义函数，防止 XSS
+const escHtml = (s) => {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+};
+
+// 安全的下载函数：用隐藏 a 标签，不中断当前页面
+function triggerDownload(url) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 100);
+}
+
+// ===== 上传 =====
+const uploadArea = $("upload-area");
+const fileInput = $("file-input");
+const progress = $("progress");
+const progressBar = $("progress-bar-inner");
+
+["dragenter", "dragover"].forEach(ev =>
+  uploadArea.addEventListener(ev, e => { e.preventDefault(); uploadArea.classList.add("dragover"); })
+);
+["dragleave", "drop"].forEach(ev =>
+  uploadArea.addEventListener(ev, e => { e.preventDefault(); uploadArea.classList.remove("dragover"); })
+);
+uploadArea.addEventListener("drop", e => {
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+// 【双保险】点击 upload-area 显式触发文件选择框
+// （<label> 默认行为已能触发，但显式 click 更稳定，避免浏览器/扩展干扰）
+uploadArea.addEventListener("click", e => {
+  // 如果用户点的是 input 自己（比如点 fileInput 的占位），让浏览器自己处理
+  if (e.target.tagName === "INPUT") return;
+  fileInput.click();
+});
+fileInput.addEventListener("change", e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+$("btn-upload-again").addEventListener("click", () => {
+  $("result").classList.remove("active");
+  fileInput.value = "";
+  fileInput.click();
+});
+
+// 【新】头部"最近一次下载"卡片的"收起"按钮
+$("btn-collapse-last").addEventListener("click", () => {
+  $("last-download-card").style.display = "none";
+});
+
+// 【修复】并发控制：上传过程中禁用按钮，防止竞态
+let isUploading = false;
+
+async function handleFile(file) {
+  if (isUploading) {
+    toast("正在上传中，请稍候...", "error");
+    return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    toast("文件过大（>50MB），请检查", "error");
+    return;
+  }
+  isUploading = true;
+  progress.classList.add("active");
+  progressBar.style.width = "30%";
+
+  const form = new FormData();
+  form.append("file", file);
+
+  try {
+    progressBar.style.width = "60%";
+    const res = await fetch("/api/upload", { method: "POST", body: form });
+    progressBar.style.width = "100%";
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `上传失败 (${res.status})` }));
+      throw new Error(err.detail || `上传失败 (${res.status})`);
+    }
+    const data = await res.json();
+    // 验证返回数据结构
+    if (typeof data.record_id !== "number") {
+      throw new Error("服务器返回数据格式异常");
+    }
+    showResult(data);
+    await Promise.all([loadHistory(), loadStats()]);
+    toast("上传完成", "success");
+  } catch (e) {
+    showResultError(e.message);
+    toast(e.message, "error");
+  } finally {
+    setTimeout(() => { progress.classList.remove("active"); progressBar.style.width = "0%"; }, 500);
+    isUploading = false;
+  }
+}
+
+function showResult(data) {
+  const r = $("result");
+  r.classList.remove("error");
+  r.classList.add("active");
+  // 【安全】用 textContent，不拼接用户数据
+  $("result-title").textContent = `✅ ${data.filename || "上传成功"}`;
+  $("r-total").textContent = (data.total_count || 0).toLocaleString();
+  $("r-dup").textContent = (data.duplicate_count || 0).toLocaleString();
+  $("r-new").textContent = (data.new_count || 0).toLocaleString();
+  $("r-skip").textContent = (data.skipped_count || 0).toLocaleString();
+  $("btn-download-txt").href = `/api/download/${data.record_id}?format=txt`;
+
+  // 【新】填充头部"最近一次下载"横幅
+  const banner = $("last-download-card");
+  banner.style.display = "block";
+  $("last-download-detail").textContent =
+    `文件 ${data.filename || "(未命名)"} · 上传 ${data.total_count} 条 · 新增 ${data.new_count} 条 · 重复 ${data.duplicate_count} 条 · 跳过 ${data.skipped_count} 条`;
+  $("last-download-txt").href = `/api/download/${data.record_id}?format=txt`;
+  $("last-download-txt").download = data.export_filename || "无重复.txt";
+  $("last-download-xlsx").href = `/api/download/${data.record_id}?format=xlsx`;
+  $("last-download-xlsx").download = (data.export_filename || "无重复.txt").replace(/\.txt$/, ".xlsx");
+  // 平滑滚动到顶部，方便用户一眼看到
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showResultError(msg) {
+  const r = $("result");
+  r.classList.add("active", "error");
+  $("result-title").textContent = "❌ " + msg;
+  $("r-total").textContent = "-";
+  $("r-dup").textContent = "-";
+  $("r-new").textContent = "-";
+  $("r-skip").textContent = "-";
+  $("btn-download-txt").removeAttribute("href");
+}
+
+// ===== 历史 =====
+// 【安全】用 DOM API 创建元素，杜绝 XSS
+async function loadHistory() {
+  try {
+    const res = await fetch("/api/records");
+    if (!res.ok) throw new Error(`加载失败 (${res.status})`);
+    const { records } = await res.json();
+    if (!Array.isArray(records)) {
+      records = [];
+    }
+    $("records-badge").textContent = `${records.length} 条`;
+
+    if (!records.length) {
+      $("empty").style.display = "block";
+      $("table-wrap").style.display = "none";
+      return;
+    }
+    $("empty").style.display = "none";
+    $("table-wrap").style.display = "block";
+
+    const tbody = $("history-body");
+    tbody.innerHTML = "";
+
+    // 【性能】用 DocumentFragment 批量插入，避免逐行 reflow
+    const fragment = document.createDocumentFragment();
+
+    records.forEach(r => {
+      const tr = document.createElement("tr");
+
+      // 文件名列
+      const tdFile = document.createElement("td");
+      const divFile = document.createElement("div");
+      divFile.className = "filename";
+      divFile.textContent = r.filename || "(未命名)";  // 【安全】textContent 自动转义
+      divFile.title = r.filename || "";
+      tdFile.appendChild(divFile);
+      tr.appendChild(tdFile);
+
+      // 上传时间
+      const tdTime = document.createElement("td");
+      tdTime.textContent = r.upload_time || "";
+      tr.appendChild(tdTime);
+
+      // 总条数
+      const tdTotal = document.createElement("td");
+      tdTotal.className = "num";
+      tdTotal.textContent = (r.total_count || 0).toLocaleString();
+      tr.appendChild(tdTotal);
+
+      // 重复数
+      const tdDup = document.createElement("td");
+      tdDup.className = "num dup";
+      tdDup.textContent = (r.duplicate_count || 0).toLocaleString();
+      tr.appendChild(tdDup);
+
+      // 新增数
+      const tdNew = document.createElement("td");
+      tdNew.className = "num new";
+      tdNew.textContent = (r.new_count || 0).toLocaleString();
+      tr.appendChild(tdNew);
+
+      // 下载按钮：直接放两个醒目的按钮（不再藏在下拉里）
+      const tdAction = document.createElement("td");
+      tdAction.style.textAlign = "right";
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+
+      // TXT 下载（主按钮）
+      const aTxt = document.createElement("a");
+      aTxt.className = "btn btn-tiny";
+      aTxt.href = `/api/download/${r.id}?format=txt`;
+      aTxt.download = "";
+      aTxt.textContent = "⬇️ TXT";
+      aTxt.title = "下载本次不重复的手机号（TXT）";
+      actions.appendChild(aTxt);
+
+      // XLSX 下载（次按钮）
+      const aXlsx = document.createElement("a");
+      aXlsx.className = "btn btn-tiny btn-secondary";
+      aXlsx.href = `/api/download/${r.id}?format=xlsx`;
+      aXlsx.download = "";
+      aXlsx.textContent = "📊 XLSX";
+      aXlsx.title = "下载本次不重复的手机号（Excel）";
+      actions.appendChild(aXlsx);
+
+      tdAction.appendChild(actions);
+      tr.appendChild(tdAction);
+
+      fragment.appendChild(tr);
+    });
+
+    tbody.appendChild(fragment);
+  } catch (e) {
+    toast("加载历史记录失败：" + e.message, "error");
+  }
+}
+
+// 【安全】用 dataset 传 id，不再拼接字符串到 onclick
+function toggleDropdown(e, recordId) {
+  e.stopPropagation();
+  // 关闭其它
+  document.querySelectorAll(".dropdown-menu.show").forEach(el => {
+    if (el.dataset.recordId !== String(recordId)) el.classList.remove("show");
+  });
+  // 用 dataset 查找
+  const target = document.querySelector(`.dropdown-menu[data-record-id="${CSS.escape(String(recordId))}"]`);
+  if (target) target.classList.toggle("show");
+}
+
+// 事件委托：处理所有下拉按钮点击
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-record-id]");
+  if (btn) {
+    toggleDropdown(e, btn.dataset.recordId);
+    return;
+  }
+  // 点击空白处关闭所有下拉
+  if (!e.target.closest(".dropdown-menu")) {
+    document.querySelectorAll(".dropdown-menu.show").forEach(el => el.classList.remove("show"));
+  }
+});
+
+async function loadStats() {
+  try {
+    const res = await fetch("/api/stats");
+    if (!res.ok) return;
+    const data = await res.json();
+    $("stat-phones").textContent = (data.total_phones || 0).toLocaleString();
+    $("stat-uploads").textContent = (data.total_uploads || 0).toLocaleString();
+    $("export-all-count").textContent = (data.total_phones || 0).toLocaleString();
+  } catch (e) {
+    // 静默失败
+  }
+}
+
+async function loadInfo() {
+  try {
+    const res = await fetch("/api/info");
+    if (!res.ok) return;
+    const data = await res.json();
+    const dbMB = (data.db_size_bytes / 1024 / 1024).toFixed(2);
+    console.log("📁 数据目录:", data.data_dir);
+    console.log("💾 数据库:", data.db_path, "(", dbMB, "MB )");
+    console.log("🖥️  运行模式:", data.frozen ? "打包后" : "开发模式");
+    console.log("🌐 平台:", data.platform);
+  } catch (e) {
+    // /api/info 不可用时静默忽略（向后兼容）
+  }
+}
+
+// ===== 搜索 =====
+let searchState = { q: "", offset: 0, total: 0, limit: 50 };
+// 【修复】搜索竞态：用 AbortController 取消旧请求
+let searchAbortController = null;
+
+$("btn-search").addEventListener("click", () => doSearch());
+$("search-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") doSearch();
+});
+
+async function doSearch(reset = true) {
+  const q = $("search-input").value.trim();
+  if (!q) { toast("请输入搜索关键字", "error"); return; }
+
+  if (reset) {
+    // 取消旧请求
+    if (searchAbortController) {
+      searchAbortController.abort();
+    }
+    searchAbortController = new AbortController();
+    searchState = { q, offset: 0, total: 0, limit: 50 };
+  }
+
+  const url = `/api/search?q=${encodeURIComponent(searchState.q)}&limit=${searchState.limit}&offset=${searchState.offset}`;
+  try {
+    const res = await fetch(url, { signal: searchAbortController.signal });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `搜索失败 (${res.status})` }));
+      throw new Error(err.detail || `搜索失败 (${res.status})`);
+    }
+    const data = await res.json();
+    if (typeof data.total !== "number" || !Array.isArray(data.results)) {
+      throw new Error("服务器返回数据格式异常");
+    }
+
+    if (data.total === 0) {
+      $("search-meta").style.display = "none";
+      $("search-results").style.display = "none";
+      toast("没有匹配结果", "");
+      return;
+    }
+    searchState.total = data.total;
+    $("search-meta").style.display = "flex";
+    const badge = data.exact_match
+      ? `<span class="badge-ok">✓ 精确匹配：存在</span>`
+      : `<span class="badge-no">✗ 精确匹配：不存在</span>`;
+    const showCount = Math.min(searchState.offset + data.results.length, data.total);
+    // 【安全】用户输入的查询词用 textContent 插入
+    $("search-summary").innerHTML =
+      `关键字 <strong>"${escHtml(searchState.q)}"</strong> · 共 ${data.total.toLocaleString()} 条匹配 · 显示 ${showCount.toLocaleString()} 条 ${badge}`;
+
+    if (reset) $("search-results").innerHTML = "";
+
+    // 【性能 + 安全】用 DOM API 创建
+    const fragment = document.createDocumentFragment();
+    data.results.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "result-row";
+
+      const span = document.createElement("span");
+      span.textContent = p;  // 【安全】textContent
+      row.appendChild(span);
+
+      const btn = document.createElement("button");
+      btn.className = "copy-btn";
+      btn.dataset.p = p;
+      btn.textContent = "复制";
+      row.appendChild(btn);
+
+      fragment.appendChild(row);
+    });
+    $("search-results").appendChild(fragment);
+    $("search-results").style.display = "block";
+    $("btn-load-more").style.display =
+      (searchState.offset + data.results.length) < data.total ? "inline-flex" : "none";
+  } catch (e) {
+    if (e.name === "AbortError") return;  // 旧请求被取消，静默忽略
+    toast("搜索失败：" + e.message, "error");
+  }
+}
+
+$("btn-load-more").addEventListener("click", () => {
+  searchState.offset += searchState.limit;
+  doSearch(false);
+});
+
+// 复制按钮（事件委托）
+$("search-results").addEventListener("click", async e => {
+  if (e.target.classList.contains("copy-btn")) {
+    const p = e.target.dataset.p;
+    if (!p) return;
+
+    // 【修复】Clipboard 降级方案
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(p);
+        toast(`已复制 ${p}`, "success");
+      } else if (document.execCommand) {
+        // 降级：先选中文本，再 execCommand
+        const range = document.createRange();
+        range.selectNodeContents(e.target.parentElement.querySelector("span"));
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        const success = document.execCommand("copy");
+        sel.removeAllRanges();
+        toast(success ? `已复制 ${p}` : "请手动复制", success ? "success" : "error");
+      } else {
+        toast("当前浏览器不支持复制，请手动选中", "error");
+      }
+    } catch {
+      toast("复制失败，请手动选中", "error");
+    }
+  }
+});
+
+// ===== 导出整个数据库 =====
+$("btn-export-all").addEventListener("click", () => {
+  const fmt = $("export-all-format").value;
+  const totalText = $("export-all-count").textContent.replace(/[^0-9]/g, "");
+  const total = parseInt(totalText, 10) || 0;
+  if (total === 0) {
+    toast("数据库为空，无可导出内容", "error");
+    return;
+  }
+  if (fmt !== "txt" && fmt !== "xlsx") {
+    toast("格式错误", "error");
+    return;
+  }
+  // 【修复】用隐藏 a 标签下载，不中断当前页面
+  triggerDownload(`/api/export-all?format=${fmt}`);
+  toast("开始下载，请稍候...", "success");
+});
+
+// init
+loadHistory();
+loadStats();
+loadInfo();
+</script>
+</body>
+</html>

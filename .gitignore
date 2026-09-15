@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# 虚拟环境（绝对不要提交）
+.venv/
+venv/
+env/
+ENV/
+
+# PyInstaller 构建产物
+build/
+dist/
+*.spec.bak
+
+# 运行时数据（每个用户的数据库独立，不要提交）
+data/
+data/*/
+!data/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# 日志
+*.log
+
+# 本地依赖
+vendor/
