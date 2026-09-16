@@ -52,11 +52,10 @@ jobs:
           python -m PyInstaller phone_dedup.spec --noconfirm --clean
 
       # ─── 5. 复制辅助文件到产物目录 ───
-      - name: 📋 复制 start.bat 和使用说明到 dist
+      - name: 📋 复制使用说明到 dist
         run: |
-          Copy-Item -Path "start.bat" -Destination "dist\phone_dedup_tool\"
           Copy-Item -Path "使用说明.txt" -Destination "dist\phone_dedup_tool\"
-          Write-Host "✓ 辅助文件已复制"
+          Write-Host "✓ 使用说明已复制"
 
       # ─── 6. 计算产物大小 ───
       - name: 📊 显示产物大小
