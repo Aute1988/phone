@@ -1,7 +1,13 @@
 @echo off
 chcp 65001 >nul
-REM 📱 手机号去重工具 - Windows 一键启动
-REM 如果 vendor/ 目录里有本地 wheel，会优先使用（无需联网）
+REM 📱 手机号去重工具 - Windows 启动脚本
+REM
+REM ⚠️ 如果你看到本文件，请直接双击【phone_dedup_tool.exe】启动！
+REM    start.bat 是给开发/重新打包用的，普通用户不需要运行此文件。
+REM
+REM 如果你一定要用命令行运行：
+REM   1. 确保已安装 Python 3.11+ (python.org/download)
+REM   2. 双击本文件即可
 
 cd /d "%~dp0"
 set PORT=8765
