@@ -24,6 +24,7 @@ block_cipher = None
 ROOT = Path(SPECPATH).resolve()
 MAIN_SCRIPT = ROOT / "server.py"
 FRONTEND = ROOT / "index.html"
+DATA_DIR = ROOT / "data"
 
 # 内部统一用英文名（避免 Windows 中文路径问题）
 INTERNAL_NAME = "phone_dedup_tool"
@@ -38,6 +39,8 @@ a = Analysis(
     datas=[
         # index.html 打包进 app（运行时从 _MEIPASS 读取）
         (str(FRONTEND), "."),
+        # data/ 目录（包含 .gitkeep 占位文件，确保解压后能看到 data 文件夹）
+        (str(DATA_DIR), "data"),
     ],
     hiddenimports=[
         # ────── uvicorn 动态加载 ──────

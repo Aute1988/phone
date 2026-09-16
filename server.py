@@ -43,19 +43,33 @@ def _get_user_data_dir() -> Path:
     获取用户专属数据目录（Windows 优先）。
 
     优先级（遇到不可写就降级）：
-      1) %APPDATA%/手机号去重工具/           （Windows 标准位置）
-      2) %LOCALAPPDATA%/手机号去重工具/      （Windows 本地）
-      3) ~/手机号去重工具/                  （用户目录）
-      4) 当前目录的 phone_dedup_data/       （兜底）
-      5) 系统临时目录                        （极端兜底）
+      1) exe 同目录的 data/（PyInstaller 打包后，优先）
+      2) %APPDATA%/手机号去重工具/           （Windows 标准位置）
+      3) %LOCALAPPDATA%/手机号去重工具/      （Windows 本地）
+      4) ~/手机号去重工具/                  （用户目录）
+      5) 当前目录的 phone_dedup_data/       （兜底）
+      6) 系统临时目录                        （极端兜底）
 
-    返回值是不含 data/ 的 BASE_DIR，外面会再拼 data/db/exports。
+    返回值是不含 data/ 的 BASE_DIR，外面会再拼 data/exports。
     """
     app_name = "手机号去重工具"
 
+    # ────── PyInstaller 打包后：存 exe 同目录下 ──────
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent.resolve()
+        data_dir = exe_dir / "data"
+        try:
+            data_dir.mkdir(parents=True, exist_ok=True)
+            test_file = data_dir / ".write_test"
+            test_file.write_text("ok", encoding="utf-8")
+            test_file.unlink()
+            return data_dir
+        except (OSError, PermissionError):
+            pass
+
     candidates = []
 
-    # ────── Windows 标准位置 ──────
+    # ────── Windows 标准位置（开发/非打包）──────
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA")
         if appdata:
